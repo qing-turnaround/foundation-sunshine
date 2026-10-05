@@ -205,6 +205,10 @@ namespace video {
     platf::pre_encode_filter_config_t pre_encode_filter_config;
     boost::shared_ptr<const image_enhancement::backend_use_t> enhancement_backend;
 
+    // Resolved by the encoder session factory for a negotiated paced budget.
+    // Legacy sessions and capability probes retain their encoder defaults.
+    bool paced_rate_control = false;
+
     platf::frame_pipeline_policy_t
     effective_frame_pipeline_policy() const {
       if (frame_pipeline_policy_resolved) {
