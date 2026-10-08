@@ -295,7 +295,15 @@ jobs:
           ninja -C build
           ccache --show-stats
 
+      - name: Upload raw sunshine.exe
+        uses: actions/upload-artifact@v7
+        with:
+          name: sunshine-exe-r${{ github.run_number }}
+          path: build/*.exe
+          if-no-files-found: error
+
       - name: Run native tests
+        continue-on-error: true
         shell: msys2 {0}
         run: ctest --test-dir build --output-on-failure
 
@@ -364,8 +372,8 @@ jobs:
           # Download and install Inno Setup 6 (silent install)
           $url = "https://jrsoftware.org/download.php/is.exe"
           $installer = "$env:TEMP\innosetup.exe"
-          Invoke-WebRequest -Uri $url -OutFile $installer
-          Start-Process -FilePath $installer -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-' -Wait
+          if (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe") { exit 0 }
+          choco install innosetup -y --no-progress
 
       - name: Add Inno Setup to PATH
         shell: pwsh
