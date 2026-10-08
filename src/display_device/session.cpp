@@ -502,6 +502,16 @@ namespace display_device {
       // NVHTTP 的短间隔重试可能在 VDD 已创建后再次进入 configure_display。
       // 在 settings_t 持久化状态或会话完成清理前，始终保留第一次创建前的快照。
       pre_saved_initial_topology = pending_vdd_.initial_topology;
+
+      // 记下 VDD 创建前的物理主屏：创建 VDD 后 Windows 会改主屏，之后再读当前主屏已不可信
+      if (pending_vdd_.pre_vdd_devices) {
+        for (const auto &[device_id, info] : *pending_vdd_.pre_vdd_devices) {
+          if (info.device_state == device_state_e::primary && info.friendly_name != ZAKO_NAME) {
+            parsed_config->pre_vdd_primary_display = device_id;
+            break;
+          }
+        }
+      }
     }
 
     // 保存当前会话的配置模式（可能包含客户端的override）

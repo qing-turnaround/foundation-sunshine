@@ -164,6 +164,7 @@ namespace display_device {
     boost::optional<refresh_rate_t> refresh_rate; /**< Parsed refresh rate value we need to switch to. Empty optional if no action is required. */
     boost::optional<bool> change_hdr_state; /**< Parsed HDR state value we need to switch to (true == ON, false == OFF). Empty optional if no action is required. */
     boost::optional<bool> use_vdd; /**< Parsed VDD state value we need to switch to (true == ON, false == OFF). */
+    std::string pre_vdd_primary_display; /**< Physical primary display captured before VDD creation (empty if unknown). */
   };
 
   /**

@@ -177,7 +177,12 @@ namespace display_device {
     boost::optional<std::string>
     handle_primary_display_configuration(const parsed_config_t &config, const std::string &previous_primary_display, const topology_metadata_t &metadata, const active_topology_t &initial_topology) {
       if (config.device_prep == parsed_config_t::device_prep_e::ensure_primary) {
-        const auto original_primary_display { previous_primary_display.empty() ? get_current_primary_display(metadata) : previous_primary_display };
+        // VDD 模式下当前主屏已被 Windows 改过，优先用 VDD 创建前记录的物理主屏作为还原目标
+        const auto original_primary_display {
+          !previous_primary_display.empty()      ? previous_primary_display :
+          !config.pre_vdd_primary_display.empty() ? config.pre_vdd_primary_display :
+                                                    get_current_primary_display(metadata)
+        };
         const auto new_primary_display { determine_new_primary_display(original_primary_display, metadata) };
 
         BOOST_LOG(info) << "Changing primary display to: " << new_primary_display;
@@ -200,9 +205,9 @@ namespace display_device {
         }
 
         const auto physical_primary_display =
-          is_physical_primary_candidate(previous_primary_display, config.device_id) ?
-            previous_primary_display :
-            find_physical_primary_candidate(initial_topology, config.device_id);
+          is_physical_primary_candidate(previous_primary_display, config.device_id)      ? previous_primary_display :
+          is_physical_primary_candidate(config.pre_vdd_primary_display, config.device_id) ? config.pre_vdd_primary_display :
+                                                                                            find_physical_primary_candidate(initial_topology, config.device_id);
 
         if (physical_primary_display.empty()) {
           BOOST_LOG(error) << "Failed to find a physical display to use as primary for VDD secondary mode.";
@@ -718,6 +723,7 @@ namespace display_device {
                                                       !data.original_hdr_states.empty();
 
       std::unordered_set<std::string> newly_enabled_devices;
+      std::string deferred_primary_display;
       auto current_topology = get_current_topology();
 
       // Handle modified topology changes
@@ -765,6 +771,8 @@ namespace display_device {
         else if (!modified_topology_valid) {
           // Modified topology invalid, clear settings that depend on it
           BOOST_LOG(warning) << "Modified topology invalid, skipping restoration of HDR, modes, and primary display";
+          // VDD 销毁后 modified 拓扑失效，主屏改到恢复 initial 拓扑之后再还原
+          deferred_primary_display = data.original_primary_display;
           data.original_hdr_states.clear();
           data.original_modes.clear();
           data.original_primary_display.clear();
@@ -783,6 +791,13 @@ namespace display_device {
           newly_enabled_devices.merge(get_newly_enabled_devices_from_topology(current_topology, data.topology.initial));
           current_topology = data.topology.initial;
           data_modified = true;
+
+          if (!deferred_primary_display.empty() && !is_primary_device(deferred_primary_display)) {
+            BOOST_LOG(info) << "Changing back the primary device (deferred) to: " << deferred_primary_display;
+            if (!set_as_primary_device(deferred_primary_display)) {
+              partially_failed = true;
+            }
+          }
         }
         else {
           BOOST_LOG(error) << "Failed to switch back to the initial topology!";
