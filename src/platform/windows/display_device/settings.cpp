@@ -191,6 +191,14 @@ namespace display_device {
       }
 
       if (should_restore_physical_primary_for_vdd_secondary(config)) {
+        // vdd_prep 已按 pre-VDD 列表还原了原主屏；当前主屏已是物理屏就保持不动，
+        // 否则 initial_topology 的分组顺序是枚举顺序，取第一个会把副屏错设为主屏
+        const auto current_primary_display { get_current_primary_display(metadata) };
+        if (is_physical_primary_candidate(current_primary_display, config.device_id)) {
+          BOOST_LOG(info) << "VDD secondary mode: keeping current physical primary display: " << current_primary_display;
+          return std::string {};
+        }
+
         const auto physical_primary_display =
           is_physical_primary_candidate(previous_primary_display, config.device_id) ?
             previous_primary_display :

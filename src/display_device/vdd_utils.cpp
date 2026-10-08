@@ -1102,6 +1102,15 @@ namespace display_device {
         return false;
       }
 
+      // set_topology 不会改主屏，Windows 插入 VDD 后常把它设成主屏；副屏模式下显式还原原主屏
+      if (vdd_prep == parsed_config_t::vdd_prep_e::vdd_as_secondary && !original_primary_id.empty() &&
+          !is_primary_device(original_primary_id)) {
+        BOOST_LOG(info) << "vdd_prep 副屏模式：还原原主屏 " << original_primary_id;
+        if (!set_as_primary_device(original_primary_id)) {
+          BOOST_LOG(warning) << "还原原主屏失败: " << original_primary_id;
+        }
+      }
+
       BOOST_LOG(info) << "成功应用vdd_prep设置";
       BOOST_LOG(debug) << "vdd_prep 执行后显示设备: " << to_string(enum_available_devices());
       return true;
